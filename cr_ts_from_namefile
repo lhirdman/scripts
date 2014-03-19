@@ -1,0 +1,28 @@
+NAMEFILE=$1
+#TSBASENAME=$1
+#HIGHVALUE=$2
+ORACLE_SID=$2
+for tsname in `cat ${NAMEFILE}`
+do
+UPPER_TSNAME=`echo ${tsname}|tr '[[:lower:]]' '[[:upper:]]'`_DTA
+#UPPER_TSNAME=${UPPER_TSNAME}_DTA
+LOWER_TSNAME=`echo ${tsname}|tr '[[:upper:]]' '[[:lower:]]'`_dta
+#LOWER_TSNAME=${LOWER_TSNAME}_dta
+UPPER_IDXNAME=`echo ${tsname}|tr '[[:lower:]]' '[[:upper:]]'`_IDX
+#UPPER_IDXNAME=${UPPER_IDXNAME}_IDX
+LOWER_IDXNAME=`echo ${tsname}|tr '[[:upper:]]' '[[:lower:]]'`_idx
+#LOWER_IDXNAME=${LOWER_IDXNAME}_idx
+#   num=$(printf "%02d" "$num")
+   echo "CREATE SMALLFILE TABLESPACE ${UPPER_TSNAME}"
+   echo "DATAFILE '/oracle/oradata1/${ORACLE_SID}/${ORACLE_SID}_${LOWER_TSNAME}_01.dbf'"
+   echo "      SIZE 100M REUSE AUTOEXTEND ON NEXT 1024K MAXSIZE 32767M"
+   echo "EXTENT MANAGEMENT LOCAL"
+   echo "SEGMENT SPACE MANAGEMENT AUTO;"
+   echo ""
+   echo "CREATE SMALLFILE TABLESPACE ${UPPER_IDXNAME}"
+   echo "DATAFILE '/oracle/oradata1/${ORACLE_SID}/${ORACLE_SID}_${LOWER_IDXNAME}_01.dbf'"
+   echo "      SIZE 100M REUSE AUTOEXTEND ON NEXT 1024K MAXSIZE 32767M"
+   echo "EXTENT MANAGEMENT LOCAL"
+   echo "SEGMENT SPACE MANAGEMENT AUTO;"
+   echo ""
+done

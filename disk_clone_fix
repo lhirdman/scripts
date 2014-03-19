@@ -1,0 +1,123 @@
+#!/bin/ksh
+# $Id: $
+# Created by Rickard Waldenfeldt
+################################################################################
+#
+# Set DEBUG environment variable to 'set -x' for debugging
+#
+#-------------------------------------------------------------------------------
+opt()
+{
+$DEBUG
+echo "Syntax: $0 -s sid -n NSID " 
+echo ""
+echo "Run this script on original database and host"
+echo ""
+echo "\t-s \t sidname       - Mandatory"
+echo "\t-n \t NSIDname    - Mandatory"
+echo ""
+exit 1
+}
+#---------------------------------------------------------------------------------------------
+sqlcall_sysdba()
+{
+$DEBUG
+SQLCOMMAND="$1"
+
+sqlplus -s "/ as sysdba" << SQLSTOP
+set pagesize 0
+set feedback off
+set termout off
+set echo off
+set trimspool on
+set trimout off
+set flush off
+$SQLCOMMAND
+exit
+SQLSTOP
+}
+################################################################################
+###################  MAIN  #####################################################
+$DEBUG
+
+# Global constants
+DBADIR=/usr/local/prod/oracle
+LOGDIR=${DBADIR}/log
+
+if [ $# = 0 ]
+then
+   opt
+fi
+
+while getopts s:n: c
+do
+   case $c in
+   s)       SID=$OPTARG;;
+   n)       NSID=$OPTARG;;
+   *)    opt;;
+   esac
+done
+#Always reset OPTIND so it is possible to source in other scripts using getopts
+OPTIND=1
+
+OS=`uname -s`
+case ${OS} in
+   "SunOS")  ORATABDIR=/var/opt/oracle;;
+   "HP-UX")  ORATABDIR=/etc;;
+   "Linux")  ORATABDIR=/etc;;
+   "AIX")    ORATABDIR=/etc;;
+esac
+
+if [ -z "${SID}" ]
+then
+    echo "Error: Oracle SID not specified" >&2
+    opt
+fi
+
+if [ -z "${NSID}" ]
+then
+    echo "Error: New Oracle SID not specified" >&2
+    opt
+fi
+
+SID_SEP_LIST=`egrep -v \# ${ORATABDIR}/oratab |egrep : |cut -d: -f1 |sed 's/^/@/' |sed 's/$/@/'`
+
+if [ -z "`echo $SID_SEP_LIST |egrep @$SID@`" ]
+then
+    echo "Error: Invalid Oracle SID specified" >&2
+    opt
+fi
+
+. ${DBADIR}/bin/orause ${SID}
+
+THISSCRIPT=`/bin/basename $0`
+DATE=`date '+%Y%m%d_%H%M'`
+LOGFILE=${LOGDIR}/${ORACLE_SID}/${THISSCRIPT}_${DATE}.log
+
+sqlcall_sysdba "create pfile='/tmp/init${SID}.ora' from spfile;"
+sid=`echo ${SID}|tr '[[:upper:]]' '[[:lower:]]'`
+nsid=`echo ${NSID}|tr '[[:upper:]]' '[[:lower:]]'`
+sed -e "s/${SID}/${NSID}/g" -e "s/${sid}/${nsid}/g" /tmp/init${SID}.ora > /tmp/init${NSID}.ora
+
+for dir in `find /oracle /opt/oracle /usr/local/prod/oracle -type d -name "*${SID}*" 2>/dev/null`
+do
+   newdir=`echo $dir|sed -e "s/${SID}/${NSID}/g"`
+   echo "mv $dir $newdir"
+   linkdir=`basename $newdir`
+   echo "ln -s ./$linkdir $dir"
+done
+for dir in `find /oracle /opt/oracle /usr/local/prod/oracle -type d -name "*${sid}*" 2>/dev/null`
+do
+   newdir=`echo $dir|sed -e "s/${sid}/${nsid}/g"`
+   echo "mv $dir $newdir"
+   linkdir=`basename $newdir`
+   echo "ln -s ./$linkdir $dir"
+done
+
+for ctlfile in `grep -i control_files /tmp/init${SID}.ora|cut -f2 -d=|sed "s/\'//g"|sed 's/\#[A-Za-z0-9 *]*//'|sed 's/,/ /g'`
+do
+   newctlfile=`echo $ctlfile|sed -e "s/${SID}/${NSID}/g" -e "s/${sid}/${nsid}/g"`
+   echo "mv $ctlfile $newctlfile"
+done
+#select name,value from v$parameter where upper(value) like
+

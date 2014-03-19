@@ -1,0 +1,2 @@
+v_dev:=sys.dbms_backup_restore.deviceAllocate(type=>'sbt_tape',
+     ident=>'t1',params=>'BLKSIZE=262144,ENV=(CvOraSID=TEST)');

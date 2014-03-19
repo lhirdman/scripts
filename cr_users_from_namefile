@@ -1,0 +1,20 @@
+NAMEFILE=$1
+PROF=$2
+if [ -x $PROF ]
+then
+   PROF=ICA_APPL_OWNER
+fi
+for name in `cat ${NAMEFILE}`
+do
+   echo "CREATE USER ${name}"
+   echo "PROFILE ${PROF}"
+   echo "IDENTIFIED BY kallestropp23"
+   echo "DEFAULT TABLESPACE ${name}_dta"
+   echo "TEMPORARY TABLESPACE TEMP"
+   echo "password expire"
+   echo "ACCOUNT UNLOCK;"
+   echo ""
+   echo "GRANT ${PROF}_ROLE to ${name};"
+   echo "ALTER USER ${name} QUOTA UNLIMITED ON ${name}_DTA;"
+   echo "ALTER USER ${name} QUOTA UNLIMITED ON ${name}_IDX;"
+done
